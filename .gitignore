@@ -1,0 +1,6 @@
+/venv/
+/models/
+/mongo_data/
+/.env
+/logs/
+__pycache__/
