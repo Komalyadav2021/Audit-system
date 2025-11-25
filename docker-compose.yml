@@ -6,3 +6,21 @@ services:
       - "27017:27017"
     volumes:
       - ./mongo_data:/data/db
+
+  streamlit:
+    build: .
+    ports:
+      - "8501:8501"
+    volumes:
+      - .:/app
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - DB_NAME=audit_ai
+      - EMBED_MODEL=sentence-transformers_all-MiniLM-L6-v2
+      - FAISS_INDEX_PATH=./src/rag/faiss.index
+      - PYTHONPATH=./src
+      - OLLAMA_URL=http://localhost:11434
+      - OLLAMA_MODEL=phi3
+    depends_on:
+      - mongo
+    command: streamlit run src/app/streamlit_app.py --server.port 8501 --server.address 0.0.0.0
