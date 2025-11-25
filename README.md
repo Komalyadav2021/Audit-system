@@ -1,4 +1,4 @@
-# 🏦 Local Audit Intelligence System (LAIS)
+# 🏦  Audit Intelligence System (AIS)
 
 An autonomous, local-first Audit Intelligence System designed to analyze, label, and summarize financial documents, primarily bank statements, using a sophisticated Agentic framework (CrewAI) and persistent local storage (MongoDB).
 
