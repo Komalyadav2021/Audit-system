@@ -1,33 +1,36 @@
-# Audit Intelligence System
+# 🏦 Local Audit Intelligence System
 
-## Overview
-Local, modular Audit Assistant: parse bank statements, auto-label transactions (hybrid rules+LLM), RAG retrieval (FAISS), and local fine-tuning (LoRA/PEFT). Runs fully offline with MongoDB.
+An autonomous, local-first Audit Intelligence System designed to analyze, label, and summarize financial documents, primarily bank statements, using a sophisticated Agentic framework (CrewAI) and persistent local storage (MongoDB).
 
-## Quickstart
-1. Start MongoDB: `docker-compose up -d`
-2. Create and activate venv:
-3. Start Streamlit UI:
+---
 
-## Folder layout
-Explain the structure...
+## ✨ Features
 
-## Models
-Download embedding model and base LLM before offline usage: `all-MiniLM-L6-v2`, etc.
+This system is built around core requirements to create a lightweight, fully autonomous auditing assistant:
 
-## License
-MIT
-# Runbook
+* [cite_start]**Agentic Orchestration:** Uses **CrewAI** to coordinate specialized agents (Planner, Executor, Labeler, Reviewer)[cite: 3, 9, 23, 24].
+* [cite_start]**Hybrid RAG:** Performs Retrieval-Augmented Generation (RAG) using FAISS or cosine similarity[cite: 3, 28].
+* [cite_start]**Auto-Labeling:** Automatically labels bank statement fields (DATE, DEBIT, CREDIT, CATEGORY) using a hybrid **Rule-Based + LLM** method[cite: 3, 16, 30, 34, 35, 36].
+* [cite_start]**Local Persistence:** Stores all documents, labels, queries, logs, and model metrics in a local **MongoDB** database[cite: 5, 20, 21, 41, 42].
+* [cite_start]**Auto Fine-Tuning Loop:** Detects new labeled or Q&A data and automatically triggers **LoRA/PEFT** fine-tuning on a lightweight local LLM[cite: 4, 18, 47, 48].
+* [cite_start]**Data Generation:** Auto-generates Q&A pairs from parsed documents for training data enrichment[cite: 4, 18, 46].
+* [cite_start]**Reporting:** Generates data analysis reports using **pandas** and **seaborn** visualizations, exported via `python-docx`[cite: 31, 32, 33].
+* [cite_start]**Offline Functionality:** The entire system runs fully locally and offline[cite: 5].
 
-## Start services
-1. Start MongoDB: `docker-compose up -d`
-2. Start file watcher (optional): `python -c "from utils.file_watcher import start_watcher; start_watcher()"`
+---
 
-## Upload file
-Use Streamlit UI to upload a bank statement. The orchestrator will run parse -> label -> analyze -> generate.
+## ⚙️ Technical Requirements & Stack
 
-## Fine-tune
-Labeled CSVs appear under `datasets/labeled_data/`. Create Q&A pairs from there or let the watcher auto-generate them. Run `python src/fine_tune/lora_trainer.py` (adapt script to call function).
+| Component | Technology | Requirement Reference |
+| :--- | :--- | :--- |
+| **Agent Orchestration** | [cite_start]CrewAI / Python |  |
+| **Database** | [cite_start]MongoDB | [cite: 5, 41] |
+| **Retrieval** | [cite_start]FAISS / Cosine Similarity | [cite: 28] |
+| **Fine-Tuning** | [cite_start]LoRA / PEFT (Hugging Face ecosystem) |  |
+| **UI/Interface** | [cite_start]Streamlit |  |
+| **Data Analysis** | [cite_start]Pandas, Seaborn | [cite: 31, 32] |
+| **Local LLM** | [cite_start]Lightweight model (e.g., Llama 2 via Ollama) | [cite: 36, 48] |
 
-## Troubleshooting
-- FAISS index not found: check `FAISS_INDEX_PATH` in .env.
-- Model load errors: ensure local model directories exist and `local_files_only=True` is set.
+---
+
+## 📂 Project Structure
