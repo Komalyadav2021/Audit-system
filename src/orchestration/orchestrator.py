@@ -1,12 +1,22 @@
 import os
 import pandas as pd
 import re
+
+# === Agents ===
 from agents.planner import run_planner
 from agents.executor import run_executor
 from agents.reviewer import run_reviewer
 from agents.labeler import run_labeler
+
+# === Database & Logging ===
 from db.mongo_client import insert_log
 from utils.logger import logger
+
+# === Fine-tuning & Auto Q/A Gen ===
+from fine_tune.fine_tuner import finetune_local_lora
+from llm.qa_generator import generate_qa_from_chunks
+from db.dataset_manager import save_qa_pairs
+
 
 FAST_KEYWORDS = ["email", "mail", "emails", "mobile", "phone", "total", "sum", "count"]
 
@@ -21,9 +31,9 @@ TASK_MAP = {
     "answer": run_executor,
 }
 
-# ---------------------------------------------
-# FAST MODE FOR CSV / XLSX QUERIES
-# ---------------------------------------------
+# ====================================================
+# 🚀 FAST MODE FOR CSV / XLSX QUESTIONS
+# ====================================================
 def fast_extract_csv(file_path, query):
     try:
         df = pd.read_csv(file_path)
@@ -42,7 +52,7 @@ def fast_extract_csv(file_path, query):
         mobiles = re.findall(r"\b[6-9]\d{9}\b", text)
         return list(sorted(set(mobiles)))
 
-    # Compute total amount
+    # Compute totals
     if "total" in query.lower() or "sum" in query.lower():
         for col in df.columns:
             try:
@@ -53,18 +63,18 @@ def fast_extract_csv(file_path, query):
                 continue
         return "No numeric column found."
 
-    # Generic fallback
     return df.head(20).to_dict()
 
-# ---------------------------------------------
-# ORCHESTRATOR
-# ---------------------------------------------
+
+# ====================================================
+# 🚀 MAIN ORCHESTRATION PIPELINE
+# ====================================================
 def orchestrate(input_json: dict) -> dict:
     query = input_json.get("user_query", "").lower()
     doc = input_json.get("doc_id", "")
 
     # ---------------------------------------------
-    # 🔥 FAST MODE: CSV / XLSX → instant answer
+    # 🔥 FAST MODE → instant CSV/XLSX answers
     # ---------------------------------------------
     if doc and any(doc.endswith(x) for x in [".csv", ".xlsx"]):
         if any(k in query for k in FAST_KEYWORDS):
@@ -77,7 +87,7 @@ def orchestrate(input_json: dict) -> dict:
             }
 
     # --------------------------------------------------
-    # OTHERWISE: normal multi-agent pipeline (RAG + LLM)
+    # 🧠 Normal RAG + Agent Pipeline
     # --------------------------------------------------
     planner_out = run_planner(input_json)
     request_id = planner_out["request_id"]
@@ -98,7 +108,7 @@ def orchestrate(input_json: dict) -> dict:
         try:
             out = func({"task": t, "context": shared_context})
 
-            # store outputs in memory
+            # Save output in memory
             if isinstance(out, dict):
                 for k in (
                     "parsed_rows",
@@ -112,8 +122,10 @@ def orchestrate(input_json: dict) -> dict:
                     if k in out:
                         shared_context["memory"][k] = out[k]
 
-            # reviewer
+            # Reviewer
             review = run_reviewer({"result": out, "context": shared_context})
+
+            # Store logs
             insert_log(func.__name__, request_id, t, {"result": out, "review": review})
 
             results.append({"task": t, "result": out, "review": review})
@@ -121,13 +133,29 @@ def orchestrate(input_json: dict) -> dict:
         except Exception as e:
             results.append({"task": t, "error": str(e)})
 
+    # ====================================================
+    # 🧩 AUTO Q/A GENERATION + AUTO FINE-TUNING
+    # ====================================================
+    chunks = shared_context["memory"].get("retrieved_chunks", [])
+
+    if chunks:
+        qa_pairs = generate_qa_from_chunks(chunks, num_pairs=20)
+        save_qa_pairs(qa_pairs)
+
+        if len(qa_pairs) > 0:
+            logger.info("⚙️ Starting Auto LoRA Fine-Tuning...")
+            finetune_local_lora()
+
+    # ====================================================
+    # FINAL ANSWER BUILDING
+    # ====================================================
     mem = shared_context["memory"]
 
     final_answer = (
-        mem.get("answer") or
-        mem.get("summary") or
-        mem.get("retrieved") or
-        results
+        mem.get("answer")
+        or mem.get("summary")
+        or mem.get("retrieved")
+        or results
     )
 
     return {
